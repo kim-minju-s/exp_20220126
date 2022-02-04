@@ -378,4 +378,32 @@ router.get('/selectreply', async function(req, res, next) {
     }
 });
 
+// localhost:3000/board/deletereply?no=125
+// 답글 삭제
+router.delete('/deletereply', async function(req, res, next){
+    try{
+        // 1. 전달되는 값 받기
+        const no = Number(req.query.no);
+
+        // 2. db 연동
+        const dbconn = await db.connect(dburl);  //연결
+        const collection = dbconn.db(dbname).collection('boardreply1');
+
+        const result = await collection.deleteOne(
+            { _id : no },   // 조건
+        );
+
+        // 4. 결과 반환
+        if (result.deletedCount === 1) {
+            return res.send({status: 200});
+        }
+        return res.send({status: 0});
+        
+    }
+    catch(e){
+        console.error(e);
+        res.send({status: -1, message: e});
+    }
+});
+
 module.exports = router;
