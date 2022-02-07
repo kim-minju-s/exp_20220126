@@ -378,7 +378,7 @@ router.get('/selectreply', async function(req, res, next) {
     }
 });
 
-// localhost:3000/board/deletereply?no=125
+// localhost:3000/board/deletereply?no=19
 // 답글 삭제
 router.delete('/deletereply', async function(req, res, next){
     try{
@@ -387,7 +387,7 @@ router.delete('/deletereply', async function(req, res, next){
 
         // 2. db 연동
         const dbconn = await db.connect(dburl);  //연결
-        const collection = dbconn.db(dbname).collection('boardreply1');
+        const collection = dbconn.db(dbname).collection('boardreply1'); //컬랙션 선택
 
         const result = await collection.deleteOne(
             { _id : no },   // 조건
