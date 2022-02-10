@@ -84,6 +84,7 @@ router.post('/insert', upload.array("image"), checkToken, async function(req, re
 router.delete('/delete', checkToken, async function(req, res, next){
     try {
         // {"code":[1018,1019,1020]}
+        // {"code":[1040]}
         const code = req.body.code;
         console.log(code);
 
@@ -111,9 +112,15 @@ router.delete('/delete', checkToken, async function(req, res, next){
 // localhost:3000/seller/update
 router.put('/update', upload.array("image"), checkToken, async function(req, res, next){
     try {
+        // 2개이상 { code : [1016,1017], title : ['a','b'] }
+        // 1개     { code :1016, title : 'a' }
         console.log(' ****************** ', req.body);  // code의 값이 문자 -> 숫자로 바꿔야함
         // 일괄 수정하기 위해서 필요한 정보 => 토큰
-
+        
+        // 1개 [ {} ] 
+        // 2개 [ {},{} ]
+        console.log(req.files);
+        
         // DB 연결
         const dbconn = await db.connect(dburl);
         const collection = dbconn.db(dbname).collection('item1'); // 물품이 들어있는 컬렉션 선택
@@ -121,49 +128,78 @@ router.put('/update', upload.array("image"), checkToken, async function(req, res
         //req.body => { code: [1018,1019], title : ['a','b'] }
         //req.files => [{},{}]
 
-        let cnt = 0;    // 실제적으로 변경한 개수를 누적할 변수
-        for(let i=0; i<req.body.title.length; i++){
-            
-            let obj = {     // 변경할 내용: 4개의 키만
-                name: req.body.title[i],
-                price: req.body.price[i],
-                quantity: req.body.quantity[i],
-                content: req.body.content[i],
-            };
-            
-            console.log('--------------------------',obj);
-            // => { name: 'sdfe', price: '456465', quantity: '56', content: 'sadsee' }
+        // req.body.title이 배열인가요? 2개 이상인가요?
+        if ( Array.isArray(req.body.title)) {
+            let cnt = 0;    // 실제적으로 변경한 개수를 누적할 변수
+            for(let i=0; i<req.body.title.length; i++){
+                
+                let obj = {     // 변경할 내용: 4개의 키만
+                    name: req.body.title[i],
+                    price: Number(req.body.price[i]),
+                    quantity: Number(req.body.quantity[i]),
+                    content: req.body.content[i],
+                };
+                
+                console.log('--------------------------',obj);
+                // => { name: 'sdfe', price: '456465', quantity: '56', content: 'sadsee' }
 
-            // 이미지를 첨부하면 4개 더 추가
-            console.log('req.files=>', req.files); //[{},{},{}]
+                // 이미지를 첨부하면 4개 더 추가
+                console.log('req.files=>', req.files); //[{},{},{}]
 
-            if (typeof req.files[i] !== 'undefined') {
-                // 이미지 정보들을 obj 객체에 담는다
-                obj['filename'] = req.files[i].originalname;
-                obj.filedata = req.files[i].buffer;
-                obj['filetype'] = req.files[i].mimetype;
-                obj.filesize = req.files[i].size;
+                if (typeof req.files[i] !== 'undefined') {
+                    // 이미지 정보들을 obj 객체에 담는다
+                    obj['filename'] = req.files[i].originalname;
+                    obj.filedata = req.files[i].buffer;
+                    obj['filetype'] = req.files[i].mimetype;
+                    obj.filesize = Number(req.files[i].size);
+                }
+                console.log(typeof req.files[i]);
+
+                const result = await collection.updateOne(
+                    { _id: Number(req.body.code[i]) },
+                    { $set : obj }
+                );
+                console.log('바뀐 물품 정보 =>', result);
+                cnt += result.matchedCount;
             }
-            console.log(typeof req.files[i]);
+
+            console.log('바뀐 이미지 개수', cnt);
+
+            // 실제 변경된 개수 === 처음 변경하기 위해 반복했던 개수 일치 유무
+            if (cnt === req.body.title.length) {
+                return res.send({status: 200});
+            }
+        }
+        else{
+            let obj = {     // 변경할 내용: 4개의 키만
+                name        : req.body.title,
+                price       : Number(req.body.price),
+                quantity    : Number(req.body.quantity),
+                content     : req.body.content,
+            };
+
+            if (typeof req.files[0] !== 'undefined') {
+                // 이미지 정보들을 obj 객체에 담는다
+                obj['filename'] = req.files[0].originalname;
+                obj.filedata    = req.files[0].buffer;
+                obj['filetype'] = req.files[0].mimetype;
+                obj.filesize    = Number(req.files[0].size);
+            };
 
             const result = await collection.updateOne(
-                { _id: Number(req.body.code[i]) },
+                { _id: Number(req.body.code) },
                 { $set : obj }
             );
-            console.log('바뀐 물품 정보 =>', result);
-            cnt += result.matchedCount;
-        }
 
-        console.log('바뀐 이미지 개수', cnt);
-
-        // 실제 변경된 개수 === 처음 변경하기 위해 반복했던 개수 일치 유무
-        if (cnt === req.body.title.length) {
-            return res.send({status: 200});
+            if (result.modifiedCount === 1) {
+                return res.send({status: 200});
+            }
         }
 
         return res.send({status: 0});
     }
     catch (e) {
+        console.error(e);
         return res.send({status: -1, message:e});
     }
 });
@@ -234,14 +270,15 @@ router.get('/selectlist', checkToken, async function(req, res, next){
         const result = await collection.find(
             { seller: email }, // 조건
             { projection : { filedata:0, filename:0, filetype:0, filesize:0 } }
-        ).sort({_id:1}).toArray();
+        ).sort({_id: -1}).toArray();
         console.log('result -->', result);
 
         // [{},{},{},...{}]
         // 변수에 없는 키를 넣어야 추가됨. 있는 키는 변경됨.
 
         for(let i=0;i<result.length;i++){
-            result[i]['imageUrl'] = `/seller/image?code=${result[i]._id}`;
+            result[i]['imageUrl'] = 
+                `/seller/image?code=${result[i]._id}&ts=${new Date().getTime()}`;
         }
         // result['imageUrl'] = `/seller/image?code=${code}`;
         // result.imageUrl = `/seller/image?code=${code}`;
