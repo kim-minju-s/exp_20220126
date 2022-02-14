@@ -15,6 +15,25 @@ const checkToken = require('../config/auth').checkToken;
 // 회원가입: 문자를 HASH하기(암호 보안)
 const crypto = require('crypto');
 
+
+// 토큰이 오면 이메일 전송함
+// localhost:3000/member/validation
+router.get('/validation', checkToken, async function(req, res, next) {
+  try{
+    
+    return res.send({
+      status:200,
+      email: req.body.uid,
+      name: req.body.uname
+    });
+
+  }
+  catch(e){
+    console.error(e);
+    res.send({status:-1, message:e});
+  }
+});
+
 // 회원가입
 // 이메일(PK), 암호, 이름 받기
 // 등록일(자동생성)

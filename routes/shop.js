@@ -11,6 +11,34 @@ const checkToken = require('../config/auth').checkToken;
 const itemCount = 16;   // 한페이지에 보여줄 개수
 
 
+// 주문 취소
+// localhost:3000/shop/orderdelete
+router.delete('/orderdelete', checkToken, async function(req, res, next) {
+    try {
+        const check = req.body.chk
+
+        console.log('check---------->', check);
+
+        const dbconn = await db.connect(dburl);
+        const collection = dbconn.db(dbname).collection('order1');
+        
+        const result = await collection.deleteMany(
+            { _id: {$in : check} }
+        );
+        console.log(result);
+        if (result.deletedCount === check.length) {
+            return res.send({status:200});
+        }
+    
+        return res.send({status: 0});
+    
+    } catch (e) {
+        console.error(e);
+        return res.send({status: -1, message:e});
+    }
+        
+    });
+
 // 주문 목록
 // localhost:3000/shop/orderlist
 router.get('/orderlist', checkToken, async function(req, res, next) {
@@ -23,7 +51,7 @@ router.get('/orderlist', checkToken, async function(req, res, next) {
     
         
         const result = await collection.find(
-            { orderid : email },    // 조건
+            { orderid : email },    // 조건: 토큰이 들어있는 이메일
             { projection: { 
                     orderstep: 0,
                     orderid: 0,
@@ -37,7 +65,7 @@ router.get('/orderlist', checkToken, async function(req, res, next) {
         for(let i=0; i<result.length; i++){
             
             const result1 = await collection1.findOne(
-                { _id: result[i].itemcode },
+                { _id: result[i].itemcode },    //조건: 
                 { projection: { 
                         name: 1,
                         price: 1

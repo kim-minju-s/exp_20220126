@@ -48,8 +48,8 @@ router.post('/insert', upload.array("image"), checkToken, async function(req, re
             arr.push ({
                 _id: result.value.seq,
                 name: req.body.title[i],
-                price: req.body.price[i],
-                quantity: req.body.quantity[i],
+                price: Number(req.body.price[i]),
+                quantity: Number(req.body.quantity[i]),
                 content: req.body.content[i],
 
                 filename: req.files[i].originalname,
