@@ -22,9 +22,9 @@ router.get('/validation', checkToken, async function(req, res, next) {
   try{
     
     return res.send({
-      status:200,
-      email: req.body.uid,
-      name: req.body.uname
+      status  : 200,
+      uid     : req.body.uid,
+      uname   : req.body.uname
     });
 
   }
@@ -104,7 +104,12 @@ router.post('/select', async function(req, res, next) {
         jwtKey,   // 토큰 생성시 키값
         jwtOptions,   // 토큰 생성 옵션
       );
-      return res.send({status:200, token:token});
+      return res.send({
+        status:200, 
+        token:token, 
+        uid: email,   // 이메일
+        uname:result.name   // 이름
+      });
     }
     
     return res.send({status:0});

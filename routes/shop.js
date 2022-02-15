@@ -39,7 +39,7 @@ router.delete('/orderdelete', checkToken, async function(req, res, next) {
         
     });
 
-// 주문 목록
+// 주문 목록 : 구매자가 주문한 목록
 // localhost:3000/shop/orderlist
 router.get('/orderlist', checkToken, async function(req, res, next) {
     try {
@@ -80,89 +80,13 @@ router.get('/orderlist', checkToken, async function(req, res, next) {
     
         return res.send({status:200, result:result});
     
-    } catch (e) {
+    } 
+    catch (e) {
         console.error(e);
         return res.send({status: -1, message:e});
     }
         
-    });
-
-// 시간대별 주문수량
-// localhost:3000/shop/grouphour
-router.get('/grouphour', async function(req, res, next) {
-    try {
-        
-        const dbconn = await db.connect(dburl);
-        const collection = dbconn.db(dbname).collection('order1');
-    
-        const result = await collection.aggregate([
-            
-            {
-                $project : {
-                    orderdata   : 1,   // 주문일자
-                    ordercnt    : 1,    // 주문수량
-                    month       : {$month: '$orderdata'}, // 주문일자를 이용해서 달
-                    hour        : {$hour: '$orderdata'},    // 주문일자를 이용해서 시
-                    minute      : {$minute: '$orderdata'} // 주문일자를 이용해서 분
-                }
-            },
-            {
-                $group: {
-                    _id     : '$minute',  // 그룹할 항목
-                    count   : {
-                        $sum : '$ordercnt'
-                    }
-                }
-            }
-        ]).toArray();
-    
-        return res.send({status:200, result:result});
-    
-    } catch (e) {
-        console.error(e);
-        return res.send({status: -1, message:e});
-    }
-        
-    });
-
-// 상품별 주문수량
-// localhost:3000/shop/groupitem
-router.get('/groupitem', async function(req, res, next) {
-    try {
-        
-        const dbconn = await db.connect(dburl);
-        const collection = dbconn.db(dbname).collection('order1');
-    
-        const result = await collection.aggregate([
-            {
-                $match: {
-                    itemcode: 1085
-                }
-            },
-            {
-                $project : {    // 가져올 항목( 물품코드, 주문수량 )
-                    itemcode: 1,
-                    ordercnt: 1
-                }
-            },
-            {
-                $group: {
-                    _id     : '$itemcode',
-                    count   : {
-                        $sum : '$ordercnt'
-                    }
-                }
-            }            
-        ]).toArray();
-    
-        return res.send({status:200, result:result});
-    
-    } catch (e) {
-        console.error(e);
-        return res.send({status: -1, message:e});
-    }
-        
-    });
+});
 
 // 주문하기
 // localhost:3000/shop/order
