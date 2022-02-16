@@ -56,6 +56,7 @@ router.post('/insert', upload.single("image"), async function(req, res, next) { 
             filesize: req.file.size,
             regdate : new Date()
         }
+        console.log('파일 정보---->',obj);
 
         // 추가할 컬렉션 선택
         const collection1   = dbconn.db(dbname).collection('board1');
@@ -162,6 +163,7 @@ router.get('/selectone', async function(req, res, next){
             { _id : no }, // 조건
             { projection: {filedata:0, filename:0, filesize:0, filetype:0} }, // 필요한 컬럼만
         );
+        console.log('result---->',result);
 
         // 4. 가져온 정보에서 이미지 정보를 추가함
         // 이미지 URL, 이전글 번호, 다음글 번호

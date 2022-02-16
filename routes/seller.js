@@ -24,11 +24,15 @@ const upload = multer({storage: multer.memoryStorage()});
 
 // 시간대별 주문수량
 // localhost:3000/seller/grouphour
+// 판매자의 토큰이 전송되면 검증 후에 이메일을 꺼냄
+// item1 컬렉션에 판매자의 상품코드를 꺼냄
+// order1에 상품코드가 일치하는 것만 가져와서 group 처리
 router.get('/grouphour', checkToken, async function(req, res, next) {
     try {
         const email = req.body.uid;
         const dbconn = await db.connect(dburl);
 
+        // 이메일이 일치하는 판매자의 물품코드 => [ 1, 2, 3, 4,,,]
         const collection = dbconn.db(dbname).collection('item1');
         //고유값 꺼내기 distinct("고유한 값 컬럼명", 조건)
         const result = await collection.distinct("_id",
@@ -41,7 +45,7 @@ router.get('/grouphour', checkToken, async function(req, res, next) {
         const result1 = await collection1.aggregate([
             {
                 $match: {
-                    item : { $in: result }
+                    itemcode : { $in: result }
                 }
             },
             {
@@ -55,16 +59,21 @@ router.get('/grouphour', checkToken, async function(req, res, next) {
             },
             {
                 $group: {
-                    _id     : '$minute',  // 그룹할 항목
+                    _id     : '$hour',  // 그룹할 항목 
                     count   : {
                         $sum : '$ordercnt'
                     }
+                }
+            },
+            {
+                $sort: {
+                    _id:1
                 }
             }
         ]).toArray();
         console.log(result1);
     
-        return res.send({status:200});
+        return res.send({status:200, result:result1});
     
     } catch (e) {
         console.error(e);
