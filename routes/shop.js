@@ -11,6 +11,83 @@ const checkToken = require('../config/auth').checkToken;
 const itemCount = 16;   // 한페이지에 보여줄 개수
 
 
+// 장바구니 목록
+// localhost:3000/shop/selectcart
+router.get('/selectcart', async function(req, res, next) {
+    try {
+        
+        const dbconn = await db.connect(dburl);
+        const userid = req.headers['x-forwarded-for'];
+
+        const collection = dbconn.db(dbname).collection('cart1');
+
+        const result = await collection.find(
+            {userid: userid}
+        ).toArray();
+        console.log('result---->',result);
+
+        // 받은 목록에서 물품 번호를 꺼내서 item1에 정보를 가져와 합치기
+        const collection1 = dbconn.db(dbname).collection('item1');
+
+        for(let i=0;i<result.length;i++){
+            const result1 = await collection1.findOne(
+                { _id: result[i].code },
+                { projection: {price:1, name:1} }
+            );
+            console.log('result---->',result1);
+            result[i].itemname = result1.name;
+            result[i].itemprice = result1.price;
+        }
+
+        return res.send({status:200, result:result});
+    
+    } 
+    catch (e) {
+        console.error(e);
+        return res.send({status: -1, message:e});
+    }
+        
+});
+
+// 장바구니
+// localhost:3000/shop/insertcart
+router.post('/insertcart', async function(req, res, next) {
+    try {
+        console.log('headers----->', req.headers['x-forwarded-for']);
+        console.log('body---->', req.body);
+
+        const dbconn = await db.connect(dburl);
+
+        const collection = dbconn.db(dbname).collection('sequence');
+        const result = await collection.findOneAndUpdate(
+            { _id:'SEQ_CART1_NO' },    // 가지고 오기 위한 조건
+            { $inc: { seq:1 } }         // seq 값을 1 증가시킴
+        );
+
+        const obj = {
+            _id: result.value.seq,
+            userid: req.headers['x-forwarded-for'],
+            code: Number(req.body.code),
+            cnt: Number(req.body.cnt)
+        }
+        
+        const collection1 = dbconn.db(dbname).collection('cart1');
+        const result1 = await collection1.insertOne(obj);
+
+        if (result1.insertedId === obj._id) {
+
+
+            return res.send({status:200});
+        }
+        return res.send({status:0});
+    
+    } catch (e) {
+        console.error(e);
+        return res.send({status: -1, message:e});
+    }
+        
+    });
+
 // 주문 취소
 // localhost:3000/shop/orderdelete
 router.delete('/orderdelete', checkToken, async function(req, res, next) {

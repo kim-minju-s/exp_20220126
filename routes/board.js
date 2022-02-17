@@ -121,7 +121,7 @@ router.get('/select', async function(req, res, next){
         // find(조건).sort(정렬)).toArray() 로 사용
         // abc => a, b, c
         const result = await collection.find(
-            { title: new RegExp(text, 'i')},
+            { content: new RegExp(text, 'i')},
             { projection: { _id: 1, title: 1, writer:1, hit: 1, regdate: 1 } }
         )
         .sort({_id: -1})
@@ -237,7 +237,7 @@ router.put('/updatehit', async function(req, res, next){
         // 3. 조회수 증가
         const result = await collection.updateOne(
             { _id : no },   // 조건
-            { $inc : { hit: 10 } }  // 실제 수행할 내용
+            { $inc : { hit: 2 } }  // 실제 수행할 내용
         );
 
         // 4. DB 수행 후 반환되는 결과 값에 따라 적절한 값을 전달
@@ -290,7 +290,6 @@ router.put('/update', async function(req, res, next){
         const no = Number(req.query.no);    // query
         const title = req.body.title;       // body
         const content = req.body.content;   // body
-        const writer = req.body.writer;     // body
 
         // 2. db 연동
         const dbconn = await db.connect(dburl);  //연결
@@ -299,7 +298,7 @@ router.put('/update', async function(req, res, next){
         // 3. 변경 수행
         const result = await collection.updateOne(
             { _id : no },   // 조건
-            { $set : { title: title, content: content, writer: writer } }  // 실제 수행할 내용
+            { $set : { title: title, content: content } }  // 실제 수행할 내용
         );
 
         // 4. DB 수행 후 반환되는 결과 값에 따라 적절한 값을 전달
