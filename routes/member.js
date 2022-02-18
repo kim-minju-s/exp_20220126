@@ -16,7 +16,93 @@ const checkToken = require('../config/auth').checkToken;
 const crypto = require('crypto');
 
 
-// 토큰이 오면 이메일 전송함
+// 주소등록: vue에서 토큰 입력할 주소
+// localhost:3000/member/insertaddr
+router.post('/insertaddr',checkToken, async function(req, res, next) {
+  try{
+    
+    const dbconn = await db.connect(dburl);
+    const collection   = dbconn.db(dbname).collection('sequence');
+
+    const result = await collection.findOneAndUpdate(
+      {_id : 'SEQ_MEMBERADDR1_NO'},
+      { $inc : { seq:1 } }
+    );
+
+    console.log('시퀀스 추가한것---->',result);
+
+    const obj = {
+      _id: result.value.seq,
+      address: req.body.address,  // 주소정보
+      memberid: req.body.uid, // 토큰에서 꺼내기
+      chk: req.body.chk,   // 대표주소설정 (숫자가 크면 우선순위 부여)
+      regdate: new Date()
+    }
+    console.log('obj---->',obj);
+    const collection1   = dbconn.db(dbname).collection('memberaddr1');
+    const result1 = await collection1.insertOne(obj);
+    console.log('보낸 값--->',result1);
+
+    if (obj._id === result1.insertedId) {
+      return res.send({status:200});
+    }
+
+    return res.send({status:0});
+
+    
+  }
+  catch(e){
+    console.error(e);
+    res.send({status:999});
+  }
+});
+
+// 주소목록
+// localhost:3000/member/selectaddr
+router.get('/selectaddr', checkToken, async function(req, res, next) {
+  try {
+    console.log('/selectaddr/req.body---->',req.body); 
+    // { uid: 'aaqq', uname: 'aaqq', urole: 'CUSTOMER' }
+    const email = req.body.uid;
+
+    const dbconn = await db.connect(dburl);
+
+    const collection   = dbconn.db(dbname).collection('memberaddr1');
+
+    const result = await collection.find(
+      { memberid : email },  // 조건
+      { projection: { address: 1 }}
+    ).toArray();
+    console.log('조회한 값---->',result);
+
+    for(let i=0;i<result.length;i++){
+      result[i].address = ``;
+    }
+
+    return res.send({status:200});
+  } 
+  catch(e){
+    console.error(e);
+    res.send({status:999});
+  }
+});
+
+// 주소삭제
+// router.delete('/deleteaddr', checkToken, async function(req, res, next) {
+
+// });
+
+// // 주소수정
+// router.put('/updateaddr', checkToken, async function(req, res, next) {
+
+// });
+
+// // 대표주소설정
+// router.put('/updatechkaddr', checkToken, async function(req, res, next) {
+
+// });
+
+// 토큰이 오면 정보 전송
 // localhost:3000/member/validation
 router.get('/validation', checkToken, async function(req, res, next) {
   try{
@@ -24,7 +110,8 @@ router.get('/validation', checkToken, async function(req, res, next) {
     return res.send({
       status  : 200,
       uid     : req.body.uid,
-      uname   : req.body.uname
+      uname   : req.body.uname,
+      urole  : req.body.urole
     });
 
   }
@@ -52,7 +139,8 @@ router.post('/insert', async function(req, res, next) {
       _id: req.body.email,
       pw: hashPassword,
       name: req.body.name,
-      regdate: new Date()
+      regdate: new Date(),
+      role: req.body.role
     }
 
     console.log("객체 확인", obj);
@@ -97,18 +185,19 @@ router.post('/select', async function(req, res, next) {
     const result       = await collection.findOne({
       _id: email, pw: hashPassword
     });
-
+    console.log('로그인------>', result);
     if (result !== null) { // 로그인 가능
       const token = jwt.sign(
-        { uid : email, uname: result.name },   // 토큰에 포함할 내용들...
+        { uid : email, 
+          uname: result.name, 
+          urole: result.role 
+        },   // 세션 -> 토큰에 포함할 내용들...
         jwtKey,   // 토큰 생성시 키값
         jwtOptions,   // 토큰 생성 옵션
       );
       return res.send({
         status:200, 
-        token:token, 
-        uid: email,   // 이메일
-        uname:result.name   // 이름
+        token:token,
       });
     }
     
