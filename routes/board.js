@@ -21,6 +21,52 @@ const upload = multer({storage: multer.memoryStorage()});
 // DELETE: delete,
 // GET: select,
 
+// CKEditor 내용 저장
+// /board/ckeditor_save
+router.post('/ckeditor_save', upload.single("image"), async function(req, res, next) {
+    console.log('ckeditor에서 이미지 저장하기------->',req.body.content);
+    return res.send({status:200});
+});
+
+// CKEditor 에서 첨부하는 이미지르 보관하는 곳
+router.post('/ckeditor_image', upload.single("image"), async function(req, res, next) {
+    try{
+        // 1. DB 접속
+        const dbconn = await db.connect(dburl);
+        // 2. DB 선택 및 컬렉션 선택
+        const collection = dbconn.db(dbname).collection('sequence');
+        // 3. 시퀀스에서 값을 가져오고, 그 다음을 위해서 증가시킴
+        const result = await collection.findOneAndUpdate(
+            { _id:'SEQ_BOARD1_NO' },    // 가지고 오기 위한 조건
+            { $inc: { seq:1 } }         // seq 값을 1 증가시킴
+        );
+
+        const obj = {
+            _id     : result.value.seq,
+
+            filename: req.file.originalname,
+            filedata: req.file.buffer,
+            filetype: req.file.mimetype,
+            filesize: req.file.size,
+        }
+
+        // 추가하기
+        const collection1 = dbconn.db(dbname).collection('boardimage1');
+        const result1       = await collection1.insertOne(obj);
+        // 추가 확인하기
+        console.log(result1);
+        if(result1.insertedId === result.value.seq){
+            return res.send({status:200});
+        }
+        return res.send({status:0});
+
+    }
+    catch(e) {
+        console.error(e);
+        res.send({status: 999});
+    }
+});
+
 // localhost:3000/board/insert
 // title, content, writer, image
 // _id, regdate

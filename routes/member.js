@@ -35,7 +35,7 @@ router.post('/insertaddr',checkToken, async function(req, res, next) {
       _id: result.value.seq,
       address: req.body.address,  // 주소정보
       memberid: req.body.uid, // 토큰에서 꺼내기
-      chk: req.body.chk,   // 대표주소설정 (숫자가 크면 우선순위 부여)
+      chk: 0,   // 대표주소설정 (숫자가 크면 우선순위 부여)
       regdate: new Date()
     }
     console.log('obj---->',obj);
@@ -43,13 +43,12 @@ router.post('/insertaddr',checkToken, async function(req, res, next) {
     const result1 = await collection1.insertOne(obj);
     console.log('보낸 값--->',result1);
 
-    if (obj._id === result1.insertedId) {
+    if (result.value.seq === result1.insertedId) {
       return res.send({status:200});
     }
 
     return res.send({status:0});
 
-    
   }
   catch(e){
     console.error(e);
@@ -71,15 +70,21 @@ router.get('/selectaddr', checkToken, async function(req, res, next) {
 
     const result = await collection.find(
       { memberid : email },  // 조건
-      { projection: { address: 1 }}
-    ).toArray();
+      { projection: { memberid: 0 }}
+    ).sort( {_id:1} ).toArray();
     console.log('조회한 값---->',result);
 
+    // 대표주소
+    let sum = 0;
     for(let i=0;i<result.length;i++){
-      result[i].address = ``;
+      sum = sum + Number(result[i].chk);
+      // sum += Number(result[i].chk);
+    }
+    if (sum <= 0) { // 체크된 것이 없으면
+      result[0].chk = 1;
     }
 
-    return res.send({status:200});
+    return res.send({status:200, result:result});
   } 
   catch(e){
     console.error(e);
@@ -87,20 +92,95 @@ router.get('/selectaddr', checkToken, async function(req, res, next) {
   }
 });
 
-// 주소삭제
-// router.delete('/deleteaddr', checkToken, async function(req, res, next) {
+//주소삭제
+router.delete('/deleteaddr', checkToken, async function(req, res, next) {
+  try {
+    const email = req.body.uid;
+    const no = req.body.no
+    const dbconn = await db.connect(dburl);
 
-// });
+    const collection   = dbconn.db(dbname).collection('memberaddr1');
+
+    const result = await collection.deleteOne(
+      { _id: no, memberid: email }
+    );
+
+    if (result.deletedCount === 1) {
+      return res.send({status:200});
+    }
+    return res.send({status:0});
+  } 
+  catch (e) {
+    console.error(e);
+    res.send({status:999});
+  }
+});
 
 // // 주소수정
-// router.put('/updateaddr', checkToken, async function(req, res, next) {
+router.put('/updateaddr', checkToken, async function(req, res, next) {
+  try {
+    const email = req.body.uid;
+    const no = req.body.no;
+    const address = req.body.address;
 
-// });
+    const dbconn = await db.connect(dburl);
+    const collection   = dbconn.db(dbname).collection('memberaddr1');
 
-// // 대표주소설정
-// router.put('/updatechkaddr', checkToken, async function(req, res, next) {
+    const result =  await collection.updateOne(
+      { memberid: email, _id: no },
+      { $set: { address: address }}
+    );
+    console.log('주소 변경------->', result);
+    
+    if (result.modifiedCount === 1) {
+      return res.send({status:200});
+    }
+    return res.send({status:0});
 
-// });
+
+  }
+  catch (e) {
+    console.error(e);
+    res.send({status:999});
+  }
+});
+
+// 대표주소설정
+router.put('/updatechkaddr', checkToken, async function(req, res, next) {
+  try {
+    const email = req.body.uid;
+    const no = req.body.no;
+
+    const dbconn = await db.connect(dburl);
+    const collection   = dbconn.db(dbname).collection('memberaddr1');
+
+    // 전체적으로 chk를 0으로 변경
+    const result = await collection.updateMany(
+      { memberid : email },
+      { $set: {chk: 0} }
+    );
+
+    console.log('대표주소설정---------->',result);
+
+    if (result.matchedCount > 0) {
+      // 1 개만 chk로 바꿈
+      const result1 = await collection.updateOne(
+        { _id: no, memberid: email },
+        { $set : {chk:1} }
+      );
+
+      if (result1.modifiedCount === 1) {
+        return res.send({status:200});
+      }
+    }
+    return res.send({status:0});
+
+  } catch (e) {
+    console.error(e);
+    res.send({status:999});
+  }
+  
+});
 
 // 토큰이 오면 정보 전송
 // localhost:3000/member/validation
